@@ -74,7 +74,16 @@ func CreateBuffers() (messages []*MemoryRegion, meta *MemoryRegion) {
 	return messages, meta
 }
 
-func newRCConn(c *net.TCPConn, iface *Interface) (*RCConn, error) {
+func NewRCConnFromNetConn(c net.Conn) (*RCConn, error) {
+	addr := c.LocalAddr().(*net.TCPAddr)
+	iface := InterfaceForAddr(&net.IPNet{IP: addr.IP})
+	if iface == nil {
+		return nil, errNoInterfaceForAddr
+	}
+	return newRCConn(c, iface)
+}
+
+func newRCConn(c net.Conn, iface *Interface) (*RCConn, error) {
 	// Leave enough room in the completion queue for any operation,
 	// including inline sends, to return an error. CQ overruns
 	// sometimes cause internal errors in the HCA, which can make the
