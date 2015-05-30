@@ -20,6 +20,7 @@ package ib
 //#include <sys/poll.h>
 //#include <sys/resource.h>
 //#include <sys/socket.h>
+//#include <errno.h>
 import "C"
 
 import (
@@ -67,10 +68,17 @@ func Getrlimit(resource int) (rlim Rlimit, err error) {
 }
 
 func Poll(fds []Pollfd, timeout int64) (n int, err error) {
-	r0, _, e1 := syscall.Syscall(syscall.SYS_POLL, uintptr(unsafe.Pointer(&fds[0])), uintptr(len(fds)), uintptr(timeout))
-	n = int(r0)
-	if e1 != 0 {
-		err = e1
+	for {
+		r0, _, e1 := syscall.Syscall(syscall.SYS_POLL, uintptr(unsafe.Pointer(&fds[0])), uintptr(len(fds)), uintptr(timeout))
+		n = int(r0)
+		switch e1 {
+		case 0:
+			return
+		case C.EINTR:
+			// Retry system call if it returns EINTR
+		default:
+			err = e1
+			return
+		}
 	}
-	return
 }
